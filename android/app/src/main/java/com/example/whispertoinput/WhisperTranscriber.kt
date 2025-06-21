@@ -33,6 +33,7 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class WhisperTranscriber {
     private data class Config(
@@ -70,7 +71,12 @@ class WhisperTranscriber {
             }
 
             // Make request
-            val client = OkHttpClient()
+            val client = OkHttpClient.Builder()
+                .connectTimeout(context.resources.getInteger(R.integer.network_connect_timeout).toLong(), TimeUnit.SECONDS)
+                .writeTimeout(context.resources.getInteger(R.integer.network_write_timeout).toLong(), TimeUnit.SECONDS)
+                .readTimeout(context.resources.getInteger(R.integer.network_read_timeout).toLong(), TimeUnit.SECONDS)
+                .callTimeout(context.resources.getInteger(R.integer.network_call_timeout).toLong(), TimeUnit.SECONDS)
+                .build()
             val request = buildWhisperRequest(
                 context,
                 filename,
@@ -153,7 +159,7 @@ class WhisperTranscriber {
 
             if (isRequestStyleOpenaiApi) {
                 addFormDataPart("file", "@audio.m4a", fileBody)
-                addFormDataPart("model", "whisper-1")
+                addFormDataPart("model", "gpt-4o-mini-transcribe")
                 addFormDataPart("response_format", "text")
             }
         }.build()

@@ -1,6 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Legacy colors -->
     <color name="dark_gray">#FF777777</color>
     <color name="theme_light_grey">#d9d9d9</color>
     <color name="theme_rich_black">#FF001A23</color>
+
+    <!-- Simplified modern color palette -->
+    <color name="primary">#6750A4</color>
+    <color name="primary_variant">#5A3A9B</color>
+    <color name="secondary">#625B71</color>
+    <color name="secondary_variant">#4A4458</color>
+    
+    <!-- Simple background colors -->
+    <color name="background">#FFFFFF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F5F5F5</color>
+    <color name="surface_container">#F8F8F8</color>
+    <color name="surface_container_high">#F0F0F0</color>
+    
+    <!-- Text colors -->
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="on_background">#1C1B1F</color>
+    <color name="on_surface">#1C1B1F</color>
+    <color name="on_surface_variant">#49454F</color>
+    
+    <!-- Accent colors -->
+    <color name="accent_blue">#0061A4</color>
+    <color name="accent_green">#006D3B</color>
+    <color name="accent_orange">#8C5000</color>
+    
+    <!-- Status colors -->
+    <color name="recording_color">#D32F2F</color>
+    <color name="transcribing_color">#FF9800</color>
+    <color name="idle_color">#4CAF50</color>
+    
+    <!-- Ripple colors -->
+    <color name="ripple_primary">#4D6750A4</color>
+    <color name="ripple_surface">#1F1C1B1F</color>
+    
+    <!-- Button colors -->
+    <color name="button_background">#FFFFFF</color>
+    <color name="button_border">#E0E0E0</color>
 </resources>

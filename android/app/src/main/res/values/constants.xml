@@ -18,4 +18,10 @@
     <!-- The time (ms) over which if the user stays silent (<= recorder_fsm_speaking_finish_threshold)
          in Recorder FSM Speaking, recording is automatically finished. -->
     <integer name="recorder_fsm_speaking_finish_time">3000</integer>
+
+    <!-- Network timeout settings (in seconds) -->
+    <integer name="network_connect_timeout">30</integer>
+    <integer name="network_write_timeout">300</integer>  <!-- 5 minutes -->
+    <integer name="network_read_timeout">300</integer>   <!-- 5 minutes -->
+    <integer name="network_call_timeout">600</integer>   <!-- 10 minutes -->
 </resources>

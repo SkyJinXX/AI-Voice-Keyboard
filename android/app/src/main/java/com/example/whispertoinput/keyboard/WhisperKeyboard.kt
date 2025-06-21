@@ -289,7 +289,8 @@ class WhisperKeyboard {
         when (newStatus) {
             KeyboardStatus.Idle -> {
                 labelStatus!!.setText(R.string.whisper_to_input)
-                buttonMic!!.setImageResource(R.drawable.mic_idle)
+                buttonMic!!.setImageResource(R.drawable.ic_microphone)
+                buttonMic!!.setBackgroundResource(R.drawable.mic_button_background)
                 waitingIcon!!.visibility = View.INVISIBLE
                 buttonCancel!!.visibility = View.INVISIBLE
                 buttonRetry!!.visibility = if (shouldShowRetry()) View.VISIBLE else View.INVISIBLE
@@ -299,7 +300,8 @@ class WhisperKeyboard {
 
             KeyboardStatus.Recording -> {
                 labelStatus!!.setText(R.string.recording)
-                buttonMic!!.setImageResource(R.drawable.mic_pressed)
+                buttonMic!!.setImageResource(R.drawable.ic_microphone_pressed)
+                buttonMic!!.setBackgroundResource(R.drawable.mic_button_recording_background)
                 waitingIcon!!.visibility = View.INVISIBLE
                 buttonCancel!!.visibility = View.VISIBLE
                 buttonRetry!!.visibility = View.INVISIBLE
@@ -309,7 +311,8 @@ class WhisperKeyboard {
 
             KeyboardStatus.Transcribing -> {
                 labelStatus!!.setText(R.string.transcribing)
-                buttonMic!!.setImageResource(R.drawable.mic_transcribing)
+                buttonMic!!.setImageResource(R.drawable.ic_microphone_transcribing)
+                buttonMic!!.setBackgroundResource(R.drawable.mic_button_transcribing_background)
                 waitingIcon!!.visibility = View.VISIBLE
                 buttonCancel!!.visibility = View.VISIBLE
                 buttonRetry!!.visibility = View.INVISIBLE

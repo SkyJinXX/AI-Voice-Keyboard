@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Simplified dark mode color palette -->
+    <color name="primary_dark">#D0BCFF</color>
+    <color name="primary_variant_dark">#B69DF8</color>
+    <color name="secondary_dark">#CCC2DC</color>
+    <color name="secondary_variant_dark">#B8B0CC</color>
+    
+    <!-- Simple dark background colors -->
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#121212</color>
+    <color name="surface_variant_dark">#1E1E1E</color>
+    <color name="surface_container_dark">#1A1A1A</color>
+    <color name="surface_container_high_dark">#252525</color>
+    
+    <!-- Text colors -->
+    <color name="on_primary_dark">#371E73</color>
+    <color name="on_secondary_dark">#332D41</color>
+    <color name="on_background_dark">#FFFFFF</color>
+    <color name="on_surface_dark">#FFFFFF</color>
+    <color name="on_surface_variant_dark">#CCCCCC</color>
+    
+    <!-- Button colors for dark mode -->
+    <color name="button_background_dark">#1E1E1E</color>
+    <color name="button_border_dark">#333333</color>
+</resources> 

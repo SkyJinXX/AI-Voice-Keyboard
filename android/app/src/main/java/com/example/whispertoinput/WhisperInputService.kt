@@ -31,8 +31,6 @@ import android.widget.Toast
 import androidx.datastore.preferences.core.Preferences
 import com.example.whispertoinput.keyboard.WhisperKeyboard
 import com.example.whispertoinput.recorder.RecorderManager
-import com.github.liuyueyi.quick.transfer.ChineseUtils
-import com.github.liuyueyi.quick.transfer.constants.TransType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -40,6 +38,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import android.util.Log
 
 private const val RECORDED_AUDIO_FILENAME = "recorded.m4a"
 private const val AUDIO_MEDIA_TYPE = "audio/mp4"
@@ -54,7 +53,7 @@ class WhisperInputService : InputMethodService() {
 
     private fun transcriptionCallback(text: String?) {
         if (!text.isNullOrEmpty()) {
-            currentInputConnection?.commitText(ChineseUtils.s2tw(text), 1)
+            currentInputConnection?.commitText(text, 1)
         }
         whisperKeyboard.reset()
     }
@@ -68,22 +67,32 @@ class WhisperInputService : InputMethodService() {
         // Initialize members with regard to this context
         recorderManager = RecorderManager(this)
 
-        // Preload conversion table
-        ChineseUtils.preLoad(true, TransType.SIMPLE_TO_TAIWAN)
-
         // Assigns the file name for recorded audio
         recordedAudioFilename = "${externalCacheDir?.absolutePath}/${RECORDED_AUDIO_FILENAME}"
 
         // Should offer ime switch?
         val shouldOfferImeSwitch: Boolean =
             if (Build.VERSION.SDK_INT >= IME_SWITCH_OPTION_AVAILABILITY_API_LEVEL) {
-                shouldOfferSwitchingToNextInputMethod()
+                val result = shouldOfferSwitchingToNextInputMethod()
+                Log.d("WhisperInputService", "shouldOfferSwitchingToNextInputMethod (API 28+): $result")
+                result
             } else {
                 val inputMethodManager =
                     getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 val token: IBinder? = window?.window?.attributes?.token
-                inputMethodManager.shouldOfferSwitchingToNextInputMethod(token)
+                val result = inputMethodManager.shouldOfferSwitchingToNextInputMethod(token)
+                Log.d("WhisperInputService", "shouldOfferSwitchingToNextInputMethod (API <28): $result")
+                result
             }
+        
+        // Force show the switch button if there are multiple input methods available
+        val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        val enabledInputMethods = inputMethodManager.enabledInputMethodList
+        val forceShowSwitchButton = enabledInputMethods.size > 1
+        Log.d("WhisperInputService", "Enabled input methods count: ${enabledInputMethods.size}")
+        Log.d("WhisperInputService", "Force show switch button: $forceShowSwitchButton")
+        
+        val finalShouldOfferImeSwitch = shouldOfferImeSwitch || forceShowSwitchButton
 
         // Sets up recorder manager
         recorderManager!!.setOnUpdateMicrophoneAmplitude { amplitude ->
@@ -92,7 +101,7 @@ class WhisperInputService : InputMethodService() {
 
         // Returns the keyboard after setting it up and inflating its layout
         return whisperKeyboard.setup(layoutInflater,
-            shouldOfferImeSwitch,
+            finalShouldOfferImeSwitch,
             { onStartRecording() },
             { onCancelRecording() },
             { attachToEnd -> onStartTranscription(attachToEnd) },
