@@ -45,6 +45,9 @@
     <string name="settings_api_key">API Key</string>
     <string name="settings_api_key_desc">The official OpenAI API Key to be used in requests.</string>
     <string name="settings_api_key_hint">Enter OpenAI API Key…</string>
+    <string name="settings_prompt">Prompt</string>
+    <string name="settings_prompt_desc">An optional text to guide the model\'s style or continue a previous audio segment.</string>
+    <string name="settings_prompt_hint">Enter prompt text (optional)…</string>
     <string name="settings_auto_recording_start">Auto Recording Start</string>
     <string name="settings_auto_recording_start_desc">Whether to automatically start recording upon opening the keyboard.</string>
     <string name="settings_option_yes">Yes</string>

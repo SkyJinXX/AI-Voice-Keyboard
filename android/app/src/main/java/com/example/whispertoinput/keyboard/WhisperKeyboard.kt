@@ -47,6 +47,12 @@ class WhisperKeyboard {
         Recording,       // Currently recording
         Transcribing,    // Waiting for transcription results
     }
+    
+    enum class Status {
+        IDLE,
+        RECORDING,
+        TRANSCRIBING
+    }
 
     // Keyboard event listeners. Assignable custom behaviors upon certain UI events (user-operated).
     private var onStartRecording: () -> Unit = { }
@@ -62,6 +68,20 @@ class WhisperKeyboard {
 
     // Keyboard Status
     private var keyboardStatus: KeyboardStatus = KeyboardStatus.Idle
+    
+    // Check if currently recording
+    fun isRecording(): Boolean {
+        return keyboardStatus == KeyboardStatus.Recording
+    }
+    
+    // Update status from external classes
+    fun updateStatus(status: Status) {
+        when (status) {
+            Status.IDLE -> setKeyboardStatus(KeyboardStatus.Idle)
+            Status.RECORDING -> setKeyboardStatus(KeyboardStatus.Recording)
+            Status.TRANSCRIBING -> setKeyboardStatus(KeyboardStatus.Transcribing)
+        }
+    }
 
     // Views & Keyboard Layout
     private var keyboardView: ConstraintLayout? = null
@@ -228,22 +248,26 @@ class WhisperKeyboard {
     }
 
     private fun onButtonMicClick() {
+        Log.d("WhisperKeyboard", "=== Mic button clicked (status: $keyboardStatus) ===")
         // Upon button mic click...
         // Idle -> Start Recording
         // Recording -> Finish Recording (without a newline)
         // Transcribing -> Nothing (to avoid double-clicking by mistake, which starts transcribing and then immediately cancels it)
         when (keyboardStatus) {
             KeyboardStatus.Idle -> {
+                Log.d("WhisperKeyboard", "Idle -> Recording")
                 setKeyboardStatus(KeyboardStatus.Recording)
                 onStartRecording()
             }
 
             KeyboardStatus.Recording -> {
+                Log.d("WhisperKeyboard", "Recording -> Transcribing (no newline)")
                 setKeyboardStatus(KeyboardStatus.Transcribing)
                 onStartTranscribing("")
             }
 
             KeyboardStatus.Transcribing -> {
+                Log.d("WhisperKeyboard", "Already transcribing, ignoring click")
                 return
             }
         }
@@ -276,18 +300,27 @@ class WhisperKeyboard {
     }
 
     private fun onButtonRetryClick() {
+        Log.d("WhisperKeyboard", "=== Retry button clicked (status: $keyboardStatus) ===")
         // Upon button retry click.
         // Idle -> Retry
         // else -> nothing
         if (keyboardStatus == KeyboardStatus.Idle) {
+            Log.d("WhisperKeyboard", "Retrying transcription with existing audio file")
             setKeyboardStatus(KeyboardStatus.Transcribing)
             onStartTranscribing("")
+        } else {
+            Log.d("WhisperKeyboard", "Retry button ignored (not idle)")
         }
     }
 
     private fun setKeyboardStatus(newStatus: KeyboardStatus) {
+        Log.d("WhisperKeyboard", "Status change: $keyboardStatus -> $newStatus")
+        val previousStatus = keyboardStatus
+        keyboardStatus = newStatus
+        
         when (newStatus) {
             KeyboardStatus.Idle -> {
+                Log.d("WhisperKeyboard", "Setting up Idle state")
                 labelStatus!!.setText(R.string.whisper_to_input)
                 buttonMic!!.setImageResource(R.drawable.ic_microphone)
                 buttonMic!!.setBackgroundResource(R.drawable.mic_button_background)
@@ -299,6 +332,7 @@ class WhisperKeyboard {
             }
 
             KeyboardStatus.Recording -> {
+                Log.d("WhisperKeyboard", "Setting up Recording state")
                 labelStatus!!.setText(R.string.recording)
                 buttonMic!!.setImageResource(R.drawable.ic_microphone_pressed)
                 buttonMic!!.setBackgroundResource(R.drawable.mic_button_recording_background)
@@ -310,6 +344,7 @@ class WhisperKeyboard {
             }
 
             KeyboardStatus.Transcribing -> {
+                Log.d("WhisperKeyboard", "Setting up Transcribing state")
                 labelStatus!!.setText(R.string.transcribing)
                 buttonMic!!.setImageResource(R.drawable.ic_microphone_transcribing)
                 buttonMic!!.setBackgroundResource(R.drawable.mic_button_transcribing_background)
@@ -320,7 +355,5 @@ class WhisperKeyboard {
                 keyboardView!!.keepScreenOn = true
             }
         }
-
-        keyboardStatus = newStatus
     }
 }

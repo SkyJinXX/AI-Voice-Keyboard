@@ -45,43 +45,61 @@ private const val AUDIO_MEDIA_TYPE = "audio/mp4"
 private const val IME_SWITCH_OPTION_AVAILABILITY_API_LEVEL = 28
 
 class WhisperInputService : InputMethodService() {
+    companion object {
+        private const val TAG = "WhisperInputService"
+    }
+    
     private val whisperKeyboard: WhisperKeyboard = WhisperKeyboard()
-    private val whisperTranscriber: WhisperTranscriber = WhisperTranscriber()
-    private var recorderManager: RecorderManager? = null
+    private lateinit var whisperTranscriber: WhisperTranscriber
+    private lateinit var recorderManager: RecorderManager
     private var recordedAudioFilename: String = ""
     private var isFirstTime: Boolean = true
 
     private fun transcriptionCallback(text: String?) {
+        Log.d(TAG, "=== Transcription completed ===")
+        Log.d(TAG, "Result text: ${text ?: "(null)"}")
         if (!text.isNullOrEmpty()) {
+            Log.d(TAG, "Committing text to input connection")
             currentInputConnection?.commitText(text, 1)
         }
         whisperKeyboard.reset()
     }
 
     private fun transcriptionExceptionCallback(message: String) {
+        Log.e(TAG, "=== Transcription failed ===")
+        Log.e(TAG, "Error message: $message")
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         whisperKeyboard.reset()
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "WhisperInputService created")
+        
+        recorderManager = RecorderManager()
+        whisperTranscriber = WhisperTranscriber()
+    }
+
     override fun onCreateInputView(): View {
-        // Initialize members with regard to this context
-        recorderManager = RecorderManager(this)
+        // Initializes recorder manager
+        recorderManager = RecorderManager()
+        
+        // Generate a filename for recording audio file.
+        recordedAudioFilename = File(this.cacheDir, "recorded.m4a").absolutePath
 
-        // Assigns the file name for recorded audio
-        recordedAudioFilename = "${externalCacheDir?.absolutePath}/${RECORDED_AUDIO_FILENAME}"
-
-        // Should offer ime switch?
-        val shouldOfferImeSwitch: Boolean =
+        // Gets whether the IME should offer IME switch option
+        // this is available only since API 28
+        val shouldOfferImeSwitch =
             if (Build.VERSION.SDK_INT >= IME_SWITCH_OPTION_AVAILABILITY_API_LEVEL) {
                 val result = shouldOfferSwitchingToNextInputMethod()
-                Log.d("WhisperInputService", "shouldOfferSwitchingToNextInputMethod (API 28+): $result")
+                Log.d(TAG, "shouldOfferSwitchingToNextInputMethod (API 28+): $result")
                 result
             } else {
                 val inputMethodManager =
                     getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 val token: IBinder? = window?.window?.attributes?.token
                 val result = inputMethodManager.shouldOfferSwitchingToNextInputMethod(token)
-                Log.d("WhisperInputService", "shouldOfferSwitchingToNextInputMethod (API <28): $result")
+                Log.d(TAG, "shouldOfferSwitchingToNextInputMethod (API <28): $result")
                 result
             }
         
@@ -89,15 +107,10 @@ class WhisperInputService : InputMethodService() {
         val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         val enabledInputMethods = inputMethodManager.enabledInputMethodList
         val forceShowSwitchButton = enabledInputMethods.size > 1
-        Log.d("WhisperInputService", "Enabled input methods count: ${enabledInputMethods.size}")
-        Log.d("WhisperInputService", "Force show switch button: $forceShowSwitchButton")
+        Log.d(TAG, "Enabled input methods count: ${enabledInputMethods.size}")
+        Log.d(TAG, "Force show switch button: $forceShowSwitchButton")
         
         val finalShouldOfferImeSwitch = shouldOfferImeSwitch || forceShowSwitchButton
-
-        // Sets up recorder manager
-        recorderManager!!.setOnUpdateMicrophoneAmplitude { amplitude ->
-            onUpdateMicrophoneAmplitude(amplitude)
-        }
 
         // Returns the keyboard after setting it up and inflating its layout
         return whisperKeyboard.setup(layoutInflater,
@@ -115,30 +128,65 @@ class WhisperInputService : InputMethodService() {
         )
     }
 
-    private fun onStartRecording() {
-        // Upon starting recording, check whether audio permission is granted.
-        if (!recorderManager!!.allPermissionsGranted(this)) {
-            // If not, launch app MainActivity (for permission setup).
-            launchMainActivity()
-            whisperKeyboard.reset()
-            return
+    private fun startRecording() {
+        Log.d(TAG, "=== Starting recording ===")
+        try {
+            val filename = File(this.cacheDir, "recorded.m4a").absolutePath
+            Log.d(TAG, "Starting recorder with filename: $filename")
+            
+            val success = recorderManager.start(filename)
+            if (success) {
+                Log.d(TAG, "Recorder started successfully")
+            } else {
+                Log.e(TAG, "Failed to start recorder")
+                whisperKeyboard.updateStatus(WhisperKeyboard.Status.IDLE)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting recording", e)
+            whisperKeyboard.updateStatus(WhisperKeyboard.Status.IDLE)
         }
-
-        recorderManager!!.start(this, recordedAudioFilename)
     }
 
-    // when mic amplitude is updated, notify the keyboard
-    // this callback is registered to the recorder manager
-    private fun onUpdateMicrophoneAmplitude(amplitude: Int) {
-        whisperKeyboard.updateMicrophoneAmplitude(amplitude)
+    private fun stopRecording() {
+        try {
+            val success = recorderManager.stop()
+            if (!success) {
+                Log.e(TAG, "Recording failed - file may be corrupted")
+                Toast.makeText(this, "Recording too short or failed", Toast.LENGTH_SHORT).show()
+                whisperKeyboard.updateStatus(WhisperKeyboard.Status.IDLE)
+                return
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping recording", e)
+            whisperKeyboard.updateStatus(WhisperKeyboard.Status.IDLE)
+            return
+        }
+    }
+
+
+
+    private fun onStartRecording() {
+        startRecording()
     }
 
     private fun onCancelRecording() {
-        recorderManager!!.stop()
+        Log.d(TAG, "=== Canceling recording ===")
+        stopRecording()
     }
 
     private fun onStartTranscription(attachToEnd: String) {
-        recorderManager!!.stop()
+        Log.d(TAG, "=== Starting transcription ===")
+        Log.d(TAG, "Attach to end: \"$attachToEnd\"")
+        
+        stopRecording()
+        
+        // Check if audio file was created properly
+        val audioFile = File(recordedAudioFilename)
+        Log.d(TAG, "Audio file exists: ${audioFile.exists()}")
+        if (audioFile.exists()) {
+            Log.d(TAG, "Audio file size: ${audioFile.length()} bytes")
+        }
+        
         whisperTranscriber.startAsync(this,
             recordedAudioFilename,
             AUDIO_MEDIA_TYPE,
@@ -204,8 +252,14 @@ class WhisperInputService : InputMethodService() {
     override fun onWindowShown() {
         super.onWindowShown()
         whisperTranscriber.stop()
-        whisperKeyboard.reset()
-        recorderManager!!.stop()
+        
+        // Only reset keyboard and stop recording if needed
+        // This prevents unnecessary MediaRecorder.stop() calls on very short recordings
+        if (whisperKeyboard.isRecording()) {
+            Log.d(TAG, "Window shown while recording - stopping recording")
+            stopRecording()
+            whisperKeyboard.reset()
+        }
 
         // If this is the first time calling onWindowShown, it means this IME is just being switched to
         // Automatically starts recording after switching to Whisper Input (if settings enabled)
@@ -213,26 +267,42 @@ class WhisperInputService : InputMethodService() {
         CoroutineScope(Dispatchers.Main).launch {
             if (!isFirstTime) return@launch
             isFirstTime = false
+            
+            // Auto-start recording is disabled for now since we can't access dataStore
+            /*
             val isAutoStartRecording = dataStore.data.map { preferences: Preferences ->
                 preferences[AUTO_RECORDING_START] ?: true
             }.first()
             if (isAutoStartRecording) {
                 whisperKeyboard.tryStartRecording()
             }
+            */
         }
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         whisperTranscriber.stop()
+        
+        // Only stop recording if needed
+        if (whisperKeyboard.isRecording()) {
+            Log.d(TAG, "Window hidden while recording - stopping recording")
+            stopRecording()
+        }
+        
         whisperKeyboard.reset()
-        recorderManager!!.stop()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         whisperTranscriber.stop()
+        
+        // Only stop recording if needed
+        if (whisperKeyboard.isRecording()) {
+            Log.d(TAG, "Service destroyed while recording - stopping recording")
+            stopRecording()
+        }
+        
         whisperKeyboard.reset()
-        recorderManager!!.stop()
     }
 }

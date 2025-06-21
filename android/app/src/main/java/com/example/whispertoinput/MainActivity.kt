@@ -61,6 +61,7 @@ val REQUEST_STYLE = booleanPreferencesKey("is-openai-api-request-style")
 val ENDPOINT = stringPreferencesKey("endpoint")
 val LANGUAGE_CODE = stringPreferencesKey("language-code")
 val API_KEY = stringPreferencesKey("api-key")
+val PROMPT = stringPreferencesKey("prompt")
 val AUTO_RECORDING_START = booleanPreferencesKey("is-auto-recording-start")
 
 class MainActivity : AppCompatActivity() {
@@ -259,6 +260,7 @@ class MainActivity : AppCompatActivity() {
                 SettingText(R.id.field_endpoint, ENDPOINT, getString(R.string.settings_option_openai_api_default_endpoint)),
                 SettingText(R.id.field_language_code, LANGUAGE_CODE),
                 SettingText(R.id.field_api_key, API_KEY),
+                SettingText(R.id.field_prompt, PROMPT),
                 SettingDropdown(R.id.spinner_auto_recording_start, AUTO_RECORDING_START, hashMapOf(
                     getString(R.string.settings_option_yes) to true,
                     getString(R.string.settings_option_no) to false,

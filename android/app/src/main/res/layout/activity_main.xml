@@ -141,6 +141,20 @@
                 style="@style/SettingsField"
                 android:hint="@string/settings_api_key_hint" />
 
+            <!-- Prompt -->
+            <TextView
+                android:id="@+id/label_prompt"
+                style="@style/SettingsLabel"
+                android:text="@string/settings_prompt" />
+            <TextView
+                android:id="@+id/description_prompt"
+                style="@style/SettingsDescription"
+                android:text="@string/settings_prompt_desc" />
+            <EditText
+                android:id="@+id/field_prompt"
+                style="@style/SettingsField"
+                android:hint="@string/settings_prompt_hint" />
+
             <!-- Auto Recording Start -->
             <TextView
                 android:id="@+id/label_auto_recording_start"

@@ -40,7 +40,8 @@ class WhisperTranscriber {
         val endpoint: String,
         val languageCode: String,
         val isRequestStyleOpenaiApi: Boolean,
-        val apiKey: String
+        val apiKey: String,
+        val prompt: String
     )
 
     private val TAG = "WhisperTranscriber"
@@ -55,15 +56,39 @@ class WhisperTranscriber {
         exceptionCallback: (String) -> Unit
     ) {
         suspend fun makeWhisperRequest(): String {
+            Log.d(TAG, "=== Starting transcription request ===")
+            Log.d(TAG, "Audio file: $filename")
+            
+            // Check if audio file exists and get its size
+            val audioFile = File(filename)
+            if (!audioFile.exists()) {
+                Log.e(TAG, "Audio file does not exist: $filename")
+                throw Exception("Audio file not found: $filename")
+            }
+            
+            val fileSize = audioFile.length()
+            Log.d(TAG, "Audio file size: $fileSize bytes")
+            
+            if (fileSize == 0L) {
+                Log.e(TAG, "Audio file is empty")
+                throw Exception("Audio file is empty")
+            }
+            
             // Retrieve configs
-            val (endpoint, languageCode, isRequestStyleOpenaiApi, apiKey) = context.dataStore.data.map { preferences: Preferences ->
+            val (endpoint, languageCode, isRequestStyleOpenaiApi, apiKey, prompt) = context.dataStore.data.map { preferences: Preferences ->
                 Config(
                     preferences[ENDPOINT] ?: "",
                     preferences[LANGUAGE_CODE] ?: "auto",
                     preferences[REQUEST_STYLE] ?: true,
-                    preferences[API_KEY] ?: ""
+                    preferences[API_KEY] ?: "",
+                    preferences[PROMPT] ?: ""
                 )
             }.first()
+
+            Log.d(TAG, "Config - Endpoint: $endpoint")
+            Log.d(TAG, "Config - Language: $languageCode")
+            Log.d(TAG, "Config - OpenAI API: $isRequestStyleOpenaiApi")
+            Log.d(TAG, "Config - Prompt: ${if (prompt.isEmpty()) "(empty)" else "\"$prompt\""}")
 
             // Foolproof message
             if (endpoint == "") {
@@ -77,22 +102,38 @@ class WhisperTranscriber {
                 .readTimeout(context.resources.getInteger(R.integer.network_read_timeout).toLong(), TimeUnit.SECONDS)
                 .callTimeout(context.resources.getInteger(R.integer.network_call_timeout).toLong(), TimeUnit.SECONDS)
                 .build()
+            val finalUrl = if (isRequestStyleOpenaiApi) endpoint else "$endpoint?encode=true&task=transcribe&language=$languageCode&word_timestamps=false&output=txt"
+            Log.d(TAG, "Final URL: $finalUrl")
+            
             val request = buildWhisperRequest(
                 context,
                 filename,
-                "$endpoint?encode=true&task=transcribe&language=$languageCode&word_timestamps=false&output=txt",
+                finalUrl,
                 mediaType,
+                languageCode,
                 apiKey,
+                prompt,
                 isRequestStyleOpenaiApi
             )
+            
+            Log.d(TAG, "Making HTTP request...")
             val response = client.newCall(request).execute()
+            
+            Log.d(TAG, "Response code: ${response.code}")
+            Log.d(TAG, "Response message: ${response.message}")
 
             // If request is not successful, or response code is weird
             if (!response.isSuccessful || response.code / 100 != 2) {
-                throw Exception(response.body!!.string().replace('\n', ' '))
+                val errorBody = response.body?.string() ?: "No error body"
+                Log.e(TAG, "Request failed - Code: ${response.code}, Error: $errorBody")
+                throw Exception(errorBody.replace('\n', ' '))
             }
 
-            return response.body!!.string().trim() + attachToEnd
+            val responseText = response.body!!.string().trim()
+            Log.d(TAG, "Response length: ${responseText.length} characters")
+            Log.d(TAG, "Response preview: ${responseText.take(100)}")
+            
+            return responseText + attachToEnd
         }
 
         // Create a cancellable job in the main thread (for UI updating)
@@ -107,12 +148,15 @@ class WhisperTranscriber {
                     val response = makeWhisperRequest()
                     // Clean up unused audio file after transcription
                     // Ref: https://developer.android.com/reference/android/media/MediaRecorder#setOutputFile(java.io.File)
-                    File(filename).delete()
+                    val deleted = File(filename).delete()
+                    Log.d(TAG, "Audio file deleted after transcription: $deleted")
                     return@withContext Pair(response, null)
                 } catch (e: CancellationException) {
                     // Task was canceled
+                    Log.d(TAG, "Transcription task was canceled")
                     return@withContext Pair(null, null)
                 } catch (e: Exception) {
+                    Log.e(TAG, "Transcription failed: ${e.message}", e)
                     return@withContext Pair(null, e.message)
                 }
             }
@@ -144,7 +188,9 @@ class WhisperTranscriber {
         filename: String,
         url: String,
         mediaType: String,
+        languageCode: String,
         apiKey: String,
+        prompt: String,
         isRequestStyleOpenaiApi: Boolean
     ): Request {
         // Please refer to the following for the endpoint/payload definitions:
@@ -152,15 +198,41 @@ class WhisperTranscriber {
         // - https://platform.openai.com/docs/api-reference/audio/createTranscription
         // - https://platform.openai.com/docs/api-reference/making-requests
         val file: File = File(filename)
+        Log.d(TAG, "Building request for file: $filename")
+        Log.d(TAG, "File exists: ${file.exists()}, size: ${file.length()} bytes")
+        Log.d(TAG, "Media type: $mediaType")
+        
+        if (file.exists() && file.length() > 0) {
+            try {
+                val fileBytes = file.readBytes()
+                Log.d(TAG, "File read successfully: ${fileBytes.size} bytes")
+                Log.d(TAG, "First few bytes: ${fileBytes.take(20).joinToString { String.format("%02x", it) }}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read file for debugging: ${e.message}")
+            }
+        }
+        
         val fileBody: RequestBody = file.asRequestBody(mediaType.toMediaTypeOrNull())
         val requestBody: RequestBody = MultipartBody.Builder().apply {
             setType(MultipartBody.FORM)
-            addFormDataPart("audio_file", "@audio.m4a", fileBody)
-
+            
             if (isRequestStyleOpenaiApi) {
                 addFormDataPart("file", "@audio.m4a", fileBody)
                 addFormDataPart("model", "gpt-4o-mini-transcribe")
                 addFormDataPart("response_format", "text")
+                
+                // Add language if specified (not auto)
+                if (languageCode != "auto" && languageCode.isNotEmpty()) {
+                    addFormDataPart("language", languageCode)
+                }
+                
+                // Add prompt if specified
+                if (prompt.isNotEmpty()) {
+                    addFormDataPart("prompt", prompt)
+                }
+            } else {
+                // For Whisper Webservice (legacy support)
+                addFormDataPart("audio_file", "@audio.m4a", fileBody)
             }
         }.build()
 
