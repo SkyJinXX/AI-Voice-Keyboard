@@ -49,6 +49,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.content.pm.ShortcutManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 
 // 200 and 201 are an arbitrary values, as long as they do not conflict with each other
 private const val MICROPHONE_PERMISSION_REQUEST_CODE = 200
@@ -68,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setupSettingItems()
         checkPermissions()
+        createIMESwitchShortcut()
     }
 
     // The onClick event of the grant permission button.
@@ -274,6 +278,26 @@ class MainActivity : AppCompatActivity() {
             }
             settingItems.map { settingItem -> settingItem.setup() }.joinAll()
             setupSettingItemsDone = true
+        }
+    }
+    
+    // 创建输入法快速切换的快捷方式
+    private fun createIMESwitchShortcut() {
+        try {
+            val shortcutIntent = Intent(this, QuickSwitchActivity::class.java)
+            shortcutIntent.action = "com.example.whispertoinput.QUICK_SWITCH_IME"
+            
+            val shortcut = ShortcutInfoCompat.Builder(this, "ime_quick_switch")
+                .setShortLabel("切换输入法")
+                .setLongLabel("快速切换输入法")
+                .setIcon(IconCompat.createWithResource(this, R.drawable.ic_keyboard_switch))
+                .setIntent(shortcutIntent)
+                .build()
+            
+            ShortcutManagerCompat.pushDynamicShortcut(this, shortcut)
+        } catch (e: Exception) {
+            // 如果创建快捷方式失败，不影响应用正常运行
+            android.util.Log.w("MainActivity", "Failed to create shortcut", e)
         }
     }
 }
