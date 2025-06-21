@@ -42,4 +42,25 @@
     <!-- Button colors -->
     <color name="button_background">#FFFFFF</color>
     <color name="button_border">#E0E0E0</color>
+    
+    <!-- Dark mode colors (fallback to light mode values in base) -->
+    <color name="primary_dark">#6750A4</color>
+    <color name="primary_variant_dark">#5A3A9B</color>
+    <color name="secondary_dark">#625B71</color>
+    <color name="secondary_variant_dark">#4A4458</color>
+    
+    <color name="background_dark">#FFFFFF</color>
+    <color name="surface_dark">#FFFFFF</color>
+    <color name="surface_variant_dark">#F5F5F5</color>
+    <color name="surface_container_dark">#F8F8F8</color>
+    <color name="surface_container_high_dark">#F0F0F0</color>
+    
+    <color name="on_primary_dark">#FFFFFF</color>
+    <color name="on_secondary_dark">#FFFFFF</color>
+    <color name="on_background_dark">#1C1B1F</color>
+    <color name="on_surface_dark">#1C1B1F</color>
+    <color name="on_surface_variant_dark">#49454F</color>
+    
+    <color name="button_background_dark">#FFFFFF</color>
+    <color name="button_border_dark">#E0E0E0</color>
 </resources>
