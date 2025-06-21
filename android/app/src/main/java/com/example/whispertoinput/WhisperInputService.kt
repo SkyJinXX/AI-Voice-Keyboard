@@ -39,6 +39,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import android.util.Log
+import android.content.Context
+import androidx.datastore.core.DataStore
+import com.example.whispertoinput.dataStore
+import com.example.whispertoinput.AUTO_RECORDING_START
 
 private const val RECORDED_AUDIO_FILENAME = "recorded.m4a"
 private const val AUDIO_MEDIA_TYPE = "audio/mp4"
@@ -253,13 +257,8 @@ class WhisperInputService : InputMethodService() {
         super.onWindowShown()
         whisperTranscriber.stop()
         
-        // Only reset keyboard and stop recording if needed
-        // This prevents unnecessary MediaRecorder.stop() calls on very short recordings
-        if (whisperKeyboard.isRecording()) {
-            Log.d(TAG, "Window shown while recording - stopping recording")
-            stopRecording()
-            whisperKeyboard.reset()
-        }
+        // 移除停止录音的逻辑，不再在窗口显示时停止录音
+        // 只在第一次显示窗口时自动开始录音
 
         // If this is the first time calling onWindowShown, it means this IME is just being switched to
         // Automatically starts recording after switching to Whisper Input (if settings enabled)
@@ -268,15 +267,23 @@ class WhisperInputService : InputMethodService() {
             if (!isFirstTime) return@launch
             isFirstTime = false
             
-            // Auto-start recording is disabled for now since we can't access dataStore
-            /*
-            val isAutoStartRecording = dataStore.data.map { preferences: Preferences ->
-                preferences[AUTO_RECORDING_START] ?: true
-            }.first()
-            if (isAutoStartRecording) {
+            try {
+                val isAutoStartRecording = dataStore.data.map { preferences: Preferences ->
+                    preferences[AUTO_RECORDING_START] ?: true
+                }.first()
+                
+                if (isAutoStartRecording) {
+                    Log.d(TAG, "Auto-starting recording")
+                    whisperKeyboard.tryStartRecording()
+                } else {
+                    Log.d(TAG, "Auto-start recording disabled")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking auto-start recording setting", e)
+                // Default to true if there's an error
+                Log.d(TAG, "Defaulting to auto-start recording")
                 whisperKeyboard.tryStartRecording()
             }
-            */
         }
     }
 
@@ -284,12 +291,7 @@ class WhisperInputService : InputMethodService() {
         super.onWindowHidden()
         whisperTranscriber.stop()
         
-        // Only stop recording if needed
-        if (whisperKeyboard.isRecording()) {
-            Log.d(TAG, "Window hidden while recording - stopping recording")
-            stopRecording()
-        }
-        
+        // 不再自动停止录音，只重置键盘状态
         whisperKeyboard.reset()
     }
 
@@ -297,7 +299,7 @@ class WhisperInputService : InputMethodService() {
         super.onDestroy()
         whisperTranscriber.stop()
         
-        // Only stop recording if needed
+        // 在服务销毁时停止录音
         if (whisperKeyboard.isRecording()) {
             Log.d(TAG, "Service destroyed while recording - stopping recording")
             stopRecording()

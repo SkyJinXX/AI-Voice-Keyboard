@@ -109,21 +109,21 @@ class RecorderManager {
                 if (recordingDuration < 500) {  // If extremely short, still consider it potentially corrupted
                     Log.w(TAG, "Recording extremely short, may still be corrupted")
                     Log.w(TAG, "Deleting potentially corrupted file")
-                    
-                    // Clean up the potentially corrupted short recording
-                    cleanup()
-                    
-                    // Delete the file since it's likely corrupted
-                    outputFile?.let { filename ->
-                        val file = File(filename)
-                        if (file.exists()) {
-                            Log.w(TAG, "Deleting short recording file: ${file.length()} bytes")
-                            file.delete()
-                        }
+                
+                // Clean up the potentially corrupted short recording
+                cleanup()
+                
+                // Delete the file since it's likely corrupted
+                outputFile?.let { filename ->
+                    val file = File(filename)
+                    if (file.exists()) {
+                        Log.w(TAG, "Deleting short recording file: ${file.length()} bytes")
+                        file.delete()
                     }
-                    
-                    Log.e(TAG, "Recording failed: Duration too short")
-                    return false
+                }
+                
+                Log.e(TAG, "Recording failed: Duration too short")
+                return false
                 }
             }
 

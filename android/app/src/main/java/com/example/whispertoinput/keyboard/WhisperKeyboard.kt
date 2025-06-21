@@ -47,7 +47,7 @@ class WhisperKeyboard {
         Recording,       // Currently recording
         Transcribing,    // Waiting for transcription results
     }
-    
+
     enum class Status {
         IDLE,
         RECORDING,
